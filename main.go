@@ -1,17 +1,21 @@
 package main
 
 import (
-	"fmt"
+	//"fmt"
 	//"io"
 	"os"
-	//"path/filepath"
-	//"strings"
 	"path/filepath"
 	"strings"
+	"fmt"
 )
 
-var disabledFound = []string{".git", ".gitignore", ".idea", "README.md"}
+var disabledFound = []string{".git", ".gitignore", ".idea", "README.md", "."}
 
+
+const (
+	PathSeparator     = '/' // OS-specific path separator
+	PathListSeparator = ':' // OS-specific path list separator
+)
 
 func main() {
 	out := os.Stdout
@@ -27,24 +31,64 @@ func main() {
 }
 
 func dirTree(out interface{}, filePath string, printFiles bool) error  {
+
+	var resultTree string
+
+	fileList, err := getFileList(filePath, printFiles)
+
+	for _, file := range fileList {
+		resultTree = resultTree + formatPath(file)
+	}
+
+
+	fmt.Println(resultTree)
+
+	return err
+}
+
+
+func formatPath(path string) string {
+	path = strings.Replace(path, `\`, `/`, 100)
+	var pathResult string
+
+	pathListFull := strings.Split(path, `/`)
+	pathList := pathListFull[1:]
+
+	if len(pathList) == 0 {
+		return pathResult
+	}
+
+	for index, item := range pathList {
+		if index == (len(pathList) - 1) {
+			pathResult = pathResult + `├───` + item
+		} else {
+			pathResult = pathResult +  "│\t"
+		}
+	}
+
+	return pathResult + "\n"
+}
+
+
+func getFileList(filePath string, printFiles bool) ([]string, error)  {
+	var fileList []string
+
 	err := filepath.Walk(filePath, func(path string, f os.FileInfo, err error) error {
 		if isDisabled(path) {
 			return nil
 		}
 
+		if !f.IsDir() && !printFiles {
+			return nil
+		}
 
-		fmt.Println(path)
-
-		//fileList = append(fileList, path)
+		fileList = append(fileList, path)
 		return nil
 	})
 
-	//for _, file := range fileList {
-	//	fmt.Println(file)
-	//}
-
-	return err
+	return fileList, err
 }
+
 
 func isDisabled(path string) bool{
 	pathList := strings.Split(path, `\`)
