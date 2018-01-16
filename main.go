@@ -1,21 +1,14 @@
 package main
 
 import (
-	//"fmt"
-	//"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"fmt"
+	"io/ioutil"
 )
 
 var disabledFound = []string{".git", ".gitignore", ".idea", "README.md", "."}
-
-
-const (
-	PathSeparator     = '/' // OS-specific path separator
-	PathListSeparator = ':' // OS-specific path list separator
-)
 
 func main() {
 	out := os.Stdout
@@ -48,9 +41,10 @@ func dirTree(out interface{}, filePath string, printFiles bool) error  {
 
 
 func formatPath(path string) string {
-	path = strings.Replace(path, `\`, `/`, 100)
 	var pathResult string
+	var tabs string
 
+	path = strings.Replace(path, `\`, `/`, 100)
 	pathListFull := strings.Split(path, `/`)
 	pathList := pathListFull[1:]
 
@@ -58,17 +52,56 @@ func formatPath(path string) string {
 		return pathResult
 	}
 
-	for index, item := range pathList {
-		if index == (len(pathList) - 1) {
-			pathResult = pathResult + `├───` + item
+	basePath := filepath.Base(path)
+	if isLastElementPath(path) {
+		pathResult = pathResult + `└───` + basePath
+	} else {
+		pathResult = pathResult + `├───` + basePath
+	}
+
+
+	tabs = getTabFormat(pathListFull)
+
+	return tabs + pathResult + "\n"
+}
+
+func getTabFormat(pathList []string) string {
+	var tabResult string
+
+	for i := 2; i < len(pathList); i++ {
+		if isLastElementPath(filepath.Join(pathList[:i]...)) {
+			tabResult = tabResult + "\t"
 		} else {
-			pathResult = pathResult +  "│\t"
+			tabResult = tabResult + "│\t"
 		}
 	}
 
-	return pathResult + "\n"
+	return tabResult
 }
 
+func isLastElementPath(path string) bool  {
+
+	basePath := filepath.Base(path)
+
+	var catalogList []string
+	var fileList []string
+
+	files, _ := ioutil.ReadDir(filepath.Dir(path))
+
+	for _, file := range files {
+		if file.IsDir() {
+			catalogList = append(catalogList, file.Name())
+		} else {
+			fileList = append(fileList, file.Name())
+		}
+	}
+
+	if basePath == catalogList[len(catalogList)-1] || basePath == fileList[len(fileList)-1]{
+		return true
+	}
+
+	return false
+}
 
 func getFileList(filePath string, printFiles bool) ([]string, error)  {
 	var fileList []string
