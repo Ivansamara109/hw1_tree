@@ -33,8 +33,7 @@ func dirTree(out io.Writer, filePath string, printFiles bool) error  {
 
 	for index, file := range fileList {
 		treeLine := getLinePath(file)
-
-		if treeLine != "" {
+		if treeLine == "" {
 			continue
 		}
 
