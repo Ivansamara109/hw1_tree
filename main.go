@@ -12,6 +12,19 @@ import (
 var disabledFound = []string{".git", ".gitignore", ".idea", "README.md", ".", "test_compare"}
 var printFilesGlobal bool
 
+const testDirResultTest = `├───project
+├───static
+│	├───a_lorem
+│	│	└───ipsum
+│	├───css
+│	├───html
+│	├───js
+│	└───z_lorem
+│		└───ipsum
+└───zline
+	└───lorem
+		└───ipsum`
+
 
 func main() {
 	out := os.Stdout
@@ -33,8 +46,15 @@ func dirTree(out io.Writer, filePath string, printFiles bool) error  {
 
 	fileList, err := getFileList(filePath)
 
-	for _, file := range fileList {
-		resultTree = resultTree + formatPath(file)
+	for index, file := range fileList {
+		treeLine := formatPath(file)
+		if treeLine != "" {
+			if (len(fileList) - 1) == index {
+				resultTree = resultTree + formatPath(file)
+			} else {
+				resultTree = resultTree + formatPath(file) + "\n"
+			}
+		}
 	}
 
 	fmt.Fprintln(out, resultTree)
@@ -74,7 +94,7 @@ func formatPath(pathOrigin string) string {
 		return pathResult
 	}
 
-	basePath := fmt.Sprintf("%s %s", filepath.Base(pathOrigin), getFileSize(pathOrigin))
+	basePath := filepath.Base(pathOrigin) + getFileSize(pathOrigin)
 
 	if isLastElementPath(pathOrigin) {
 		pathResult = pathResult + `└───` + basePath
@@ -84,7 +104,7 @@ func formatPath(pathOrigin string) string {
 
 	tabs = getTabs(pathListFull)
 
-	return tabs + pathResult + "\n"
+	return tabs + pathResult
 }
 
 //Формат отступов для дерева
@@ -132,9 +152,9 @@ func getFileSize(path string) string  {
 	if !fileInfo.IsDir() {
 		size := fileInfo.Size()
 		if size == 0 {
-			fileSize = "(empty)"
+			fileSize = " (empty)"
 		} else {
-			fileSize = fmt.Sprintf("(%vb)", size)
+			fileSize = fmt.Sprintf(" (%vb)", size)
 		}
 	}
 
