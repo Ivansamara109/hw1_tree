@@ -6,9 +6,12 @@ import (
 	"strings"
 	"fmt"
 	"io/ioutil"
+	"io"
 )
 
-var disabledFound = []string{".git", ".gitignore", ".idea", "README.md", "."}
+var disabledFound = []string{".git", ".gitignore", ".idea", "README.md", ".", "test_compare"}
+var printFilesGlobal bool
+
 
 func main() {
 	out := os.Stdout
@@ -23,49 +26,69 @@ func main() {
 	}
 }
 
-func dirTree(out interface{}, filePath string, printFiles bool) error  {
+func dirTree(out io.Writer, filePath string, printFiles bool) error  {
 
 	var resultTree string
+	printFilesGlobal = printFiles
 
-	fileList, err := getFileList(filePath, printFiles)
+	fileList, err := getFileList(filePath)
 
 	for _, file := range fileList {
 		resultTree = resultTree + formatPath(file)
 	}
 
-
-	fmt.Println(resultTree)
+	fmt.Fprintln(out, resultTree)
 
 	return err
 }
 
+func getFileList(filePath string) ([]string, error)  {
+	var fileList []string
 
-func formatPath(path string) string {
+	err := filepath.Walk(filePath, func(path string, f os.FileInfo, err error) error {
+		if isDisabled(path) {
+			return nil
+		}
+
+		if !f.IsDir() && !printFilesGlobal {
+			return nil
+		}
+
+		fileList = append(fileList, path)
+		return nil
+	})
+
+	return fileList, err
+}
+
+
+func formatPath(pathOrigin string) string {
 	var pathResult string
 	var tabs string
 
-	path = strings.Replace(path, `\`, `/`, 100)
-	pathListFull := strings.Split(path, `/`)
+	pathLinux := strings.Replace(pathOrigin, `\`, `/`, 100)
+	pathListFull := strings.Split(pathLinux, `/`)
 	pathList := pathListFull[1:]
 
 	if len(pathList) == 0 {
 		return pathResult
 	}
 
-	basePath := filepath.Base(path)
-	if isLastElementPath(path) {
+	basePath := fmt.Sprintf("%s %s", filepath.Base(pathOrigin), getFileSize(pathOrigin))
+
+	if isLastElementPath(pathOrigin) {
 		pathResult = pathResult + `└───` + basePath
 	} else {
 		pathResult = pathResult + `├───` + basePath
 	}
 
-
-	tabs = getTabFormat(pathListFull)
+	tabs = getTabs(pathListFull)
 
 	return tabs + pathResult + "\n"
 }
 
-func getTabFormat(pathList []string) string {
+//Формат отступов для дерева
+func getTabs(pathList []string) string {
 	var tabResult string
 
 	for i := 2; i < len(pathList); i++ {
@@ -79,49 +102,44 @@ func getTabFormat(pathList []string) string {
 	return tabResult
 }
 
+//Проверка на то что элемент последний в списке
 func isLastElementPath(path string) bool  {
 
 	basePath := filepath.Base(path)
 
-	var catalogList []string
-	var fileList []string
+	var sortList []string
 
 	files, _ := ioutil.ReadDir(filepath.Dir(path))
 
 	for _, file := range files {
-		if file.IsDir() {
-			catalogList = append(catalogList, file.Name())
-		} else {
-			fileList = append(fileList, file.Name())
+		if printFilesGlobal == false && file.IsDir() == false {
+			continue
 		}
+		sortList = append(sortList, file.Name())
 	}
 
-	if basePath == catalogList[len(catalogList)-1] || basePath == fileList[len(fileList)-1]{
+	if sortList[len(sortList)-1] == basePath {
 		return true
 	}
 
 	return false
 }
 
-func getFileList(filePath string, printFiles bool) ([]string, error)  {
-	var fileList []string
-
-	err := filepath.Walk(filePath, func(path string, f os.FileInfo, err error) error {
-		if isDisabled(path) {
-			return nil
+//Размер файла
+func getFileSize(path string) string  {
+	var fileSize string
+	fileInfo, _ := os.Stat(path)
+	if !fileInfo.IsDir() {
+		size := fileInfo.Size()
+		if size == 0 {
+			fileSize = "(empty)"
+		} else {
+			fileSize = fmt.Sprintf("(%vb)", size)
 		}
+	}
 
-		if !f.IsDir() && !printFiles {
-			return nil
-		}
-
-		fileList = append(fileList, path)
-		return nil
-	})
-
-	return fileList, err
+	return fileSize
 }
-
 
 func isDisabled(path string) bool{
 	pathList := strings.Split(path, `\`)
@@ -133,3 +151,4 @@ func isDisabled(path string) bool{
 	}
 	return false
 }
+
