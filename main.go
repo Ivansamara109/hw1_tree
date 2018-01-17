@@ -12,20 +12,6 @@ import (
 var disabledFound = []string{".git", ".gitignore", ".idea", "README.md", ".", "test_compare"}
 var printFilesGlobal bool
 
-const testDirResultTest = `├───project
-├───static
-│	├───a_lorem
-│	│	└───ipsum
-│	├───css
-│	├───html
-│	├───js
-│	└───z_lorem
-│		└───ipsum
-└───zline
-	└───lorem
-		└───ipsum`
-
-
 func main() {
 	out := os.Stdout
 	if !(len(os.Args) == 2 || len(os.Args) == 3) {
@@ -40,20 +26,22 @@ func main() {
 }
 
 func dirTree(out io.Writer, filePath string, printFiles bool) error  {
-
 	var resultTree string
 	printFilesGlobal = printFiles
 
-	fileList, err := getFileList(filePath)
+	fileList, err := getTreeFileList(filePath)
 
 	for index, file := range fileList {
-		treeLine := formatPath(file)
+		treeLine := getLinePath(file)
+
 		if treeLine != "" {
-			if (len(fileList) - 1) == index {
-				resultTree = resultTree + formatPath(file)
-			} else {
-				resultTree = resultTree + formatPath(file) + "\n"
-			}
+			continue
+		}
+
+		resultTree = resultTree + treeLine
+
+		if (len(fileList) - 1) != index {
+			resultTree = resultTree + "\n"
 		}
 	}
 
@@ -62,7 +50,8 @@ func dirTree(out io.Writer, filePath string, printFiles bool) error  {
 	return err
 }
 
-func getFileList(filePath string) ([]string, error)  {
+//Отсортированый список файлов
+func getTreeFileList(filePath string) ([]string, error)  {
 	var fileList []string
 
 	err := filepath.Walk(filePath, func(path string, f os.FileInfo, err error) error {
@@ -81,8 +70,8 @@ func getFileList(filePath string) ([]string, error)  {
 	return fileList, err
 }
 
-
-func formatPath(pathOrigin string) string {
+//Преобразование пути в строку отображения
+func getLinePath(pathOrigin string) string {
 	var pathResult string
 	var tabs string
 
@@ -161,6 +150,7 @@ func getFileSize(path string) string  {
 	return fileSize
 }
 
+//Проверка на игнор файла
 func isDisabled(path string) bool{
 	pathList := strings.Split(path, `\`)
 
